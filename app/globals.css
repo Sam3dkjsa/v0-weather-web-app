@@ -10,28 +10,33 @@
   --card-foreground: oklch(0.25 0.01 240);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.01 240);
-  --primary: oklch(0.55 0.15 150);
+  /* Updated primary color to sky blue */
+  --primary: oklch(0.65 0.14 230);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0.01 240);
   --secondary-foreground: oklch(0.25 0.01 240);
   --muted: oklch(0.97 0.005 240);
   --muted-foreground: oklch(0.5 0.01 240);
-  --accent: oklch(0.6 0.18 150);
+  /* Updated accent color to lighter sky blue */
+  --accent: oklch(0.75 0.12 220);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.93 0.005 240);
   --input: oklch(0.96 0.005 240);
-  --ring: oklch(0.55 0.15 150);
-  --chart-1: oklch(0.55 0.15 150);
-  --chart-2: oklch(0.6 0.18 180);
-  --chart-3: oklch(0.65 0.15 210);
-  --chart-4: oklch(0.5 0.2 160);
-  --chart-5: oklch(0.7 0.12 140);
+  /* Updated ring color to sky blue */
+  --ring: oklch(0.65 0.14 230);
+  /* Updated chart colors to sky blue variants */
+  --chart-1: oklch(0.65 0.14 230);
+  --chart-2: oklch(0.7 0.16 210);
+  --chart-3: oklch(0.75 0.12 220);
+  --chart-4: oklch(0.6 0.18 240);
+  --chart-5: oklch(0.8 0.1 200);
   --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.25 0.01 240);
-  --sidebar-primary: oklch(0.55 0.15 150);
+  /* Updated sidebar primary to sky blue */
+  --sidebar-primary: oklch(0.65 0.14 230);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.25 0.01 240);
@@ -46,27 +51,32 @@
   --card-foreground: oklch(0.95 0.005 240);
   --popover: oklch(0.18 0.01 240);
   --popover-foreground: oklch(0.95 0.005 240);
-  --primary: oklch(0.65 0.18 240);
+  /* Updated dark mode primary to sky blue */
+  --primary: oklch(0.7 0.16 220);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.25 0.01 240);
   --secondary-foreground: oklch(0.95 0.005 240);
   --muted: oklch(0.22 0.01 240);
   --muted-foreground: oklch(0.6 0.01 240);
-  --accent: oklch(0.7 0.2 200);
+  /* Updated dark mode accent to sky blue */
+  --accent: oklch(0.75 0.14 210);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.5 0.2 27.325);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.25 0.01 240);
   --input: oklch(0.25 0.01 240);
-  --ring: oklch(0.65 0.18 240);
-  --chart-1: oklch(0.65 0.18 240);
-  --chart-2: oklch(0.7 0.2 200);
-  --chart-3: oklch(0.75 0.18 280);
-  --chart-4: oklch(0.65 0.22 160);
-  --chart-5: oklch(0.8 0.15 60);
+  /* Updated dark mode ring to sky blue */
+  --ring: oklch(0.7 0.16 220);
+  /* Updated dark mode chart colors to sky blue variants */
+  --chart-1: oklch(0.7 0.16 220);
+  --chart-2: oklch(0.75 0.14 210);
+  --chart-3: oklch(0.8 0.12 200);
+  --chart-4: oklch(0.65 0.18 230);
+  --chart-5: oklch(0.85 0.1 190);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  /* Updated dark mode sidebar primary to sky blue */
+  --sidebar-primary: oklch(0.7 0.16 220);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -123,4 +133,109 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Added keyframe animations for startup effects */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.6s ease-out;
+}
+
+/* Added weather animation keyframes for clouds, rain, snow, and lightning */
+@keyframes float-cloud {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(110vw);
+  }
+}
+
+@keyframes rain {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100vh);
+    opacity: 0.3;
+  }
+}
+
+@keyframes snow {
+  from {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100vh) translateX(20px);
+    opacity: 0.3;
+  }
+}
+
+@keyframes lightning-bolt {
+  0%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+  92%,
+  94%,
+  96% {
+    opacity: 0.8;
+  }
+}
+
+.animate-float-cloud {
+  animation: float-cloud 30s linear infinite;
+}
+
+.animate-rain {
+  animation: rain 1s linear infinite;
+}
+
+.animate-snow {
+  animation: snow 5s linear infinite;
+}
+
+.animate-lightning-bolt {
+  animation: lightning-bolt 6s ease-in-out infinite;
 }

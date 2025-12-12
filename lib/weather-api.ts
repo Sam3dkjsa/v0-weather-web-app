@@ -157,56 +157,66 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
     })
   }
 
-  // Process hourly data (OpenWeather forecast is 3-hour intervals)
-  const hourly = forecastData.list.slice(0, 8).map((item: any) => ({
-    time: new Date(item.dt * 1000).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      hour12: true,
-    }),
-    temperature: Math.round(item.main.temp),
-    icon: getWeatherIcon(item.weather[0].icon),
-    precipitation: item.pop ? Math.round(item.pop * 100) : 0,
-  }))
+  const hourly = forecastData.list
+    .filter((item: any, index: number) => index % 1 === 0) // Keep all 3-hour data points from API
+    .slice(0, 16) // Get more data points to filter
+    .filter((item: any, index: number) => index % 2 === 0) // Take every other one (approximately 6 hours)
+    .slice(0, 6) // Show 6 time points (current + next 24-30 hours)
+    .map((item: any) => {
+      const timestamp = new Date(item.dt * 1000)
+      return {
+        time: timestamp.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        temperature: Math.round(item.main.temp),
+        icon: getWeatherIcon(item.weather[0].icon),
+        precipitation: item.pop ? Math.round(item.pop * 100) : 0,
+      }
+    })
 
-  // Process daily data - group forecast by day
   const dailyMap = new Map()
   forecastData.list.forEach((item: any) => {
-    const date = new Date(item.dt * 1000).toLocaleDateString()
-    if (!dailyMap.has(date)) {
-      dailyMap.set(date, {
+    const dateObj = new Date(item.dt * 1000)
+    const dateKey = dateObj.toISOString().split("T")[0] // Use ISO date as key (YYYY-MM-DD)
+    if (!dailyMap.has(dateKey)) {
+      dailyMap.set(dateKey, {
+        dateObj, // Store the actual Date object
         temps: [],
         icon: item.weather[0].icon,
         description: item.weather[0].description,
         precipitation: item.pop || 0,
       })
     }
-    dailyMap.get(date).temps.push(item.main.temp)
+    dailyMap.get(dateKey).temps.push(item.main.temp)
   })
 
   const daily = Array.from(dailyMap.entries())
     .slice(0, 7)
-    .map(([date, data]: [string, any], index: number) => ({
-      date: index === 0 ? "Today" : new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
-      maxTemp: Math.round(Math.max(...data.temps)),
-      minTemp: Math.round(Math.min(...data.temps)),
-      icon: getWeatherIcon(data.icon),
-      description: data.description,
-      precipitation: Math.round(data.precipitation * 100),
-    }))
+    .map(([dateKey, data]: [string, any], index: number) => {
+      // Use the stored Date object for formatting
+      const dateStr =
+        index === 0
+          ? "Today"
+          : data.dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+
+      return {
+        date: dateStr,
+        maxTemp: Math.round(Math.max(...data.temps)),
+        minTemp: Math.round(Math.min(...data.temps)),
+        icon: getWeatherIcon(data.icon),
+        description: data.description,
+        precipitation: Math.round(data.precipitation * 100),
+      }
+    })
 
   // Get air quality data
   const aqiValue = airData.list[0]?.main.aqi || 1
   const components = airData.list[0]?.components || {}
 
-  // Convert OpenWeather AQI (1-5) to US EPA scale (0-500)
-  const aqiMap: { [key: number]: number } = {
-    1: 25, // Good
-    2: 75, // Fair
-    3: 125, // Moderate
-    4: 175, // Poor
-    5: 300, // Very Poor
-  }
-  const aqi = aqiMap[aqiValue] || 50
+  const pm25 = components.pm2_5 || 0
+  const aqi = calculateAQI(pm25)
 
   const weatherDetails = {
     visibility: Math.round(currentData.visibility / 1000),
@@ -216,6 +226,7 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
     humidity: currentData.main.humidity,
   }
   console.log("[v0] Weather Details:", weatherDetails)
+  console.log("[v0] Calculated AQI from PM2.5:", aqi, "PM2.5:", pm25)
 
   return {
     location: `${currentData.name}, ${currentData.sys.country}`,
