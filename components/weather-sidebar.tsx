@@ -3,7 +3,13 @@
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { MapPin, Search, Bell, CloudRain, Wind, Lightbulb, ChevronRight } from "lucide-react"
+import { MapPin, Search, Bell, Lightbulb, ChevronRight, Plus, X } from "lucide-react"
+
+interface SavedLocation {
+  name: string
+  lat: number
+  lon: number
+}
 
 interface WeatherSidebarProps {
   location: string
@@ -15,6 +21,10 @@ interface WeatherSidebarProps {
   onUnitChange: (unit: "celsius" | "fahrenheit") => void
   currentTemp: number
   aqi: number
+  savedLocations: SavedLocation[]
+  onAddLocation: () => void
+  onRemoveLocation: (index: number) => void
+  onSelectLocation: (location: SavedLocation) => void
 }
 
 export function WeatherSidebar({
@@ -27,6 +37,10 @@ export function WeatherSidebar({
   onUnitChange,
   currentTemp,
   aqi,
+  savedLocations,
+  onAddLocation,
+  onRemoveLocation,
+  onSelectLocation,
 }: WeatherSidebarProps) {
   return (
     <div className="lg:w-80 space-y-4">
@@ -34,8 +48,9 @@ export function WeatherSidebar({
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Location</h3>
-          <Button variant="ghost" size="sm" className="text-primary text-xs h-auto p-0 hover:bg-transparent">
-            + Add
+          <Button onClick={onAddLocation} variant="ghost" size="sm" className="h-7 px-2">
+            <Plus className="w-4 h-4 mr-1" />
+            Save
           </Button>
         </div>
         <div className="p-3 bg-muted/50 rounded-lg flex items-center justify-between group hover:bg-muted transition-colors cursor-pointer">
@@ -66,6 +81,40 @@ export function WeatherSidebar({
         </div>
       </Card>
 
+      {savedLocations.length > 0 && (
+        <Card className="p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Saved Locations</h3>
+          <div className="space-y-2">
+            {savedLocations.map((loc, index) => (
+              <div
+                key={index}
+                className="p-2.5 bg-muted/50 rounded-lg flex items-center justify-between group hover:bg-muted transition-colors cursor-pointer"
+                onClick={(e) => {
+                  console.log("[v0] Clicked saved location:", loc)
+                  onSelectLocation(loc)
+                }}
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-foreground truncate">{loc.name}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemoveLocation(index)
+                  }}
+                >
+                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Environmental Alerts */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -89,37 +138,6 @@ export function WeatherSidebar({
               </div>
             </div>
           </div>
-        </div>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card className="p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
-        <div className="space-y-2">
-          <button className="w-full p-3 bg-muted/50 hover:bg-muted rounded-lg flex items-center justify-between group transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CloudRain className="w-4 h-4 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">Weather Monitoring</p>
-                <p className="text-xs text-muted-foreground">View detailed weather forecasts</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-          <button className="w-full p-3 bg-muted/50 hover:bg-muted rounded-lg flex items-center justify-between group transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Wind className="w-4 h-4 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">Air Quality Tracking</p>
-                <p className="text-xs text-muted-foreground">Monitor air quality metrics</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
         </div>
       </Card>
 
@@ -157,7 +175,6 @@ export function WeatherSidebar({
             <p className="text-xs text-muted-foreground mb-3">
               Air quality is good today! Perfect time for outdoor activities and exercise.
             </p>
-            <button className="text-xs text-primary font-medium hover:underline">Learn More →</button>
           </div>
         </div>
       </Card>

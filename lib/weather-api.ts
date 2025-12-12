@@ -40,36 +40,29 @@ export interface WeatherData {
   }>
 }
 
-function getWeatherIcon(code: number, isDay = true): string {
-  const weatherIcons: { [key: number]: { day: string; night: string } } = {
-    0: { day: "☀️", night: "🌙" },
-    1: { day: "🌤️", night: "🌙" },
-    2: { day: "⛅", night: "☁️" },
-    3: { day: "☁️", night: "☁️" },
-    45: { day: "🌫️", night: "🌫️" },
-    48: { day: "🌫️", night: "🌫️" },
-    51: { day: "🌦️", night: "🌧️" },
-    53: { day: "🌦️", night: "🌧️" },
-    55: { day: "🌧️", night: "🌧️" },
-    61: { day: "🌧️", night: "🌧️" },
-    63: { day: "🌧️", night: "🌧️" },
-    65: { day: "🌧️", night: "🌧️" },
-    71: { day: "🌨️", night: "🌨️" },
-    73: { day: "🌨️", night: "🌨️" },
-    75: { day: "🌨️", night: "🌨️" },
-    77: { day: "🌨️", night: "🌨️" },
-    80: { day: "🌦️", night: "🌧️" },
-    81: { day: "🌧️", night: "🌧️" },
-    82: { day: "⛈️", night: "🌧️" },
-    85: { day: "🌨️", night: "🌨️" },
-    86: { day: "🌨️", night: "🌨️" },
-    95: { day: "⛈️", night: "⛈️" },
-    96: { day: "⛈️", night: "⛈️" },
-    99: { day: "⛈️", night: "⛈️" },
+function getWeatherIcon(iconCode: string): string {
+  const weatherIcons: { [key: string]: string } = {
+    "01d": "☀️",
+    "01n": "🌙",
+    "02d": "🌤️",
+    "02n": "☁️",
+    "03d": "☁️",
+    "03n": "☁️",
+    "04d": "☁️",
+    "04n": "☁️",
+    "09d": "🌧️",
+    "09n": "🌧️",
+    "10d": "🌦️",
+    "10n": "🌧️",
+    "11d": "⛈️",
+    "11n": "⛈️",
+    "13d": "🌨️",
+    "13n": "🌨️",
+    "50d": "🌫️",
+    "50n": "🌫️",
   }
 
-  const icon = weatherIcons[code] || weatherIcons[0]
-  return isDay ? icon.day : icon.night
+  return weatherIcons[iconCode] || "☀️"
 }
 
 function getWeatherDescription(code: number): string {
@@ -134,76 +127,108 @@ function calculateAQI(pm25: number): number {
 }
 
 export async function getWeatherData(lat: number, lon: number): Promise<WeatherData> {
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,visibility,uv_index&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&timezone=auto`
+  const API_KEY = "44bbe22f280f0ca7d39c634e8d1f879f"
 
-  const airQualityUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi`
+  // OpenWeather API endpoints
+  const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+  const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+  const airQualityUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`
 
-  const [weatherResponse, airQualityResponse] = await Promise.all([fetch(weatherUrl), fetch(airQualityUrl)])
+  const [currentResponse, forecastResponse, airQualityResponse] = await Promise.all([
+    fetch(currentWeatherUrl),
+    fetch(forecastUrl),
+    fetch(airQualityUrl),
+  ])
 
-  const data = await weatherResponse.json()
+  const currentData = await currentResponse.json()
+  const forecastData = await forecastResponse.json()
   const airData = await airQualityResponse.json()
 
-  // Get location name
-  const locationName = await getLocationName(lat, lon)
-
   // Format sunrise/sunset times
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
     })
   }
 
-  // Process hourly data
-  const hourly = data.hourly.time.slice(0, 24).map((time: string, index: number) => ({
-    time: new Date(time).toLocaleTimeString("en-US", {
+  // Process hourly data (OpenWeather forecast is 3-hour intervals)
+  const hourly = forecastData.list.slice(0, 8).map((item: any) => ({
+    time: new Date(item.dt * 1000).toLocaleTimeString("en-US", {
       hour: "numeric",
       hour12: true,
     }),
-    temperature: data.hourly.temperature_2m[index],
-    icon: getWeatherIcon(data.hourly.weather_code[index], true),
-    precipitation: data.hourly.precipitation_probability[index] || 0,
+    temperature: Math.round(item.main.temp),
+    icon: getWeatherIcon(item.weather[0].icon),
+    precipitation: item.pop ? Math.round(item.pop * 100) : 0,
   }))
 
-  // Process daily data
-  const daily = data.daily.time.map((date: string, index: number) => ({
-    date: index === 0 ? "Today" : new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
-    maxTemp: data.daily.temperature_2m_max[index],
-    minTemp: data.daily.temperature_2m_min[index],
-    icon: getWeatherIcon(data.daily.weather_code[index], true),
-    description: getWeatherDescription(data.daily.weather_code[index]),
-    precipitation: data.daily.precipitation_probability_max[index] || 0,
-  }))
+  // Process daily data - group forecast by day
+  const dailyMap = new Map()
+  forecastData.list.forEach((item: any) => {
+    const date = new Date(item.dt * 1000).toLocaleDateString()
+    if (!dailyMap.has(date)) {
+      dailyMap.set(date, {
+        temps: [],
+        icon: item.weather[0].icon,
+        description: item.weather[0].description,
+        precipitation: item.pop || 0,
+      })
+    }
+    dailyMap.get(date).temps.push(item.main.temp)
+  })
 
-  const pm25 = airData.current.pm2_5 || 0
-  const aqi = airData.current.us_aqi || calculateAQI(pm25)
+  const daily = Array.from(dailyMap.entries())
+    .slice(0, 7)
+    .map(([date, data]: [string, any], index: number) => ({
+      date: index === 0 ? "Today" : new Date(date).toLocaleDateString("en-US", { weekday: "short" }),
+      maxTemp: Math.round(Math.max(...data.temps)),
+      minTemp: Math.round(Math.min(...data.temps)),
+      icon: getWeatherIcon(data.icon),
+      description: data.description,
+      precipitation: Math.round(data.precipitation * 100),
+    }))
+
+  // Get air quality data
+  const aqiValue = airData.list[0]?.main.aqi || 1
+  const components = airData.list[0]?.components || {}
+
+  // Convert OpenWeather AQI (1-5) to US EPA scale (0-500)
+  const aqiMap: { [key: number]: number } = {
+    1: 25, // Good
+    2: 75, // Fair
+    3: 125, // Moderate
+    4: 175, // Poor
+    5: 300, // Very Poor
+  }
+  const aqi = aqiMap[aqiValue] || 50
 
   return {
-    location: locationName,
+    location: `${currentData.name}, ${currentData.sys.country}`,
     current: {
-      temperature: data.current.temperature_2m,
-      feelsLike: data.current.apparent_temperature,
-      description: getWeatherDescription(data.current.weather_code),
-      icon: getWeatherIcon(data.current.weather_code, true),
-      humidity: data.current.relative_humidity_2m,
-      windSpeed: data.current.wind_speed_10m,
-      windDirection: data.current.wind_direction_10m,
-      pressure: data.current.pressure_msl,
-      visibility: data.current.visibility,
-      uvIndex: data.current.uv_index,
-      sunrise: formatTime(data.daily.sunrise[0]),
-      sunset: formatTime(data.daily.sunset[0]),
+      temperature: Math.round(currentData.main.temp),
+      feelsLike: Math.round(currentData.main.feels_like),
+      description: currentData.weather[0].description,
+      icon: getWeatherIcon(currentData.weather[0].icon),
+      humidity: currentData.main.humidity,
+      windSpeed: Math.round(currentData.wind.speed * 3.6), // Convert m/s to km/h
+      windDirection: currentData.wind.deg,
+      pressure: currentData.main.pressure,
+      visibility: Math.round(currentData.visibility / 1000), // Convert to km
+      uvIndex: 0, // OpenWeather free tier doesn't include UV
+      sunrise: formatTime(currentData.sys.sunrise),
+      sunset: formatTime(currentData.sys.sunset),
     },
     airQuality: {
       aqi,
       category: getAQICategory(aqi),
-      pm25: airData.current.pm2_5 || 0,
-      pm10: airData.current.pm10 || 0,
-      no2: airData.current.nitrogen_dioxide || 0,
-      so2: airData.current.sulphur_dioxide || 0,
-      o3: airData.current.ozone || 0,
-      co: airData.current.carbon_monoxide || 0,
+      pm25: components.pm2_5 || 0,
+      pm10: components.pm10 || 0,
+      no2: components.no2 || 0,
+      so2: components.so2 || 0,
+      o3: components.o3 || 0,
+      co: components.co || 0,
     },
     hourly,
     daily,

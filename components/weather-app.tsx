@@ -3,23 +3,17 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  MapPin,
-  CloudRain,
-  RefreshCw,
-  Download,
-  Thermometer,
-  Wind,
-  Droplets,
-  Eye,
-  Gauge,
-  SunIcon,
-  Calendar,
-} from "lucide-react"
+import { MapPin, CloudRain, RefreshCw, Thermometer, Wind, Droplets, Eye, Gauge, SunIcon, Calendar } from "lucide-react"
 import { MetricCard } from "@/components/metric-card"
 import { TrendChart } from "@/components/trend-chart"
 import { WeatherSidebar } from "@/components/weather-sidebar"
 import { getWeatherData, type WeatherData } from "@/lib/weather-api"
+
+interface SavedLocation {
+  name: string
+  lat: number
+  lon: number
+}
 
 export default function WeatherApp() {
   const [location, setLocation] = useState("")
@@ -28,6 +22,15 @@ export default function WeatherApp() {
   const [error, setError] = useState("")
   const [unit, setUnit] = useState<"celsius" | "fahrenheit">("celsius")
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lon: number } | null>(null)
+  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([])
+
+  useEffect(() => {
+    const saved = localStorage.getItem("savedLocations")
+    if (saved) {
+      setSavedLocations(JSON.parse(saved))
+    }
+  }, [])
 
   // Load user's location on mount
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function WeatherApp() {
     try {
       const data = await getWeatherData(lat, lon)
       setWeatherData(data)
+      setCurrentCoords({ lat, lon })
       setLastUpdated(new Date())
     } catch (err) {
       setError("Failed to fetch weather data")
@@ -82,10 +86,39 @@ export default function WeatherApp() {
     }
   }
 
+  const handleAddLocation = () => {
+    if (!weatherData || !currentCoords) return
+
+    const newLocation: SavedLocation = {
+      name: weatherData.location,
+      lat: currentCoords.lat,
+      lon: currentCoords.lon,
+    }
+
+    // Check if location already exists
+    const exists = savedLocations.some((loc) => loc.lat === newLocation.lat && loc.lon === newLocation.lon)
+
+    if (!exists) {
+      const updated = [...savedLocations, newLocation]
+      setSavedLocations(updated)
+      localStorage.setItem("savedLocations", JSON.stringify(updated))
+    }
+  }
+
+  const handleRemoveLocation = (index: number) => {
+    const updated = savedLocations.filter((_, i) => i !== index)
+    setSavedLocations(updated)
+    localStorage.setItem("savedLocations", JSON.stringify(updated))
+  }
+
+  const handleSelectLocation = (location: SavedLocation) => {
+    console.log("[v0] Selecting saved location:", location)
+    fetchWeather(location.lat, location.lon)
+  }
+
   const handleRefresh = () => {
-    if (weatherData) {
-      const [lat, lon] = weatherData.coordinates
-      fetchWeather(lat, lon)
+    if (currentCoords) {
+      fetchWeather(currentCoords.lat, currentCoords.lon)
     }
   }
 
@@ -128,9 +161,7 @@ export default function WeatherApp() {
                 <span className="text-xl font-semibold text-foreground">EcoWeather Pro</span>
               </div>
               <nav className="hidden md:flex items-center gap-6 text-sm">
-                <button className="text-foreground font-medium border-b-2 border-primary pb-1">Dashboard</button>
-                <button className="text-muted-foreground hover:text-foreground transition-colors">Weather</button>
-                <button className="text-muted-foreground hover:text-foreground transition-colors">Air Quality</button>
+                <span className="text-foreground font-medium border-b-2 border-primary pb-1">Dashboard</span>
               </nav>
             </div>
             <div className="flex items-center gap-3">
@@ -166,10 +197,6 @@ export default function WeatherApp() {
                   <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading}>
                     <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Refresh
-                  </Button>
-                  <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Data
                   </Button>
                 </div>
               </div>
@@ -337,6 +364,10 @@ export default function WeatherApp() {
               onUnitChange={setUnit}
               currentTemp={convertTemp(weatherData.current.temperature)}
               aqi={weatherData.airQuality.aqi}
+              savedLocations={savedLocations}
+              onAddLocation={handleAddLocation}
+              onRemoveLocation={handleRemoveLocation}
+              onSelectLocation={handleSelectLocation}
             />
           </div>
         </div>
