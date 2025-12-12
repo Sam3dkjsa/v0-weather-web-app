@@ -15,6 +15,14 @@ interface SavedLocation {
   lon: number
 }
 
+interface SearchResult {
+  name: string
+  country: string
+  admin1?: string
+  latitude: number
+  longitude: number
+}
+
 export default function WeatherApp() {
   const [location, setLocation] = useState("")
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
@@ -24,6 +32,7 @@ export default function WeatherApp() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lon: number } | null>(null)
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([])
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
 
   useEffect(() => {
     const saved = localStorage.getItem("savedLocations")
@@ -32,7 +41,6 @@ export default function WeatherApp() {
     }
   }, [])
 
-  // Load user's location on mount
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -50,13 +58,26 @@ export default function WeatherApp() {
   const fetchWeather = async (lat: number, lon: number) => {
     setLoading(true)
     setError("")
+    setSearchResults([])
     try {
       const data = await getWeatherData(lat, lon)
+      console.log("[v0] Fetched Weather Data:", data)
+      console.log(
+        "[v0] Additional Details - Visibility:",
+        data.current.visibility,
+        "Pressure:",
+        data.current.pressure,
+        "UV:",
+        data.current.uvIndex,
+        "Wind:",
+        data.current.windSpeed,
+      )
       setWeatherData(data)
       setCurrentCoords({ lat, lon })
       setLastUpdated(new Date())
     } catch (err) {
       setError("Failed to fetch weather data")
+      console.error("[v0] Error fetching weather:", err)
     } finally {
       setLoading(false)
     }
@@ -69,21 +90,26 @@ export default function WeatherApp() {
     setError("")
     try {
       const response = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`,
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=10&language=en&format=json`,
       )
       const data = await response.json()
 
       if (data.results && data.results.length > 0) {
-        const { latitude, longitude } = data.results[0]
-        await fetchWeather(latitude, longitude)
+        setSearchResults(data.results)
       } else {
         setError("Location not found")
+        setSearchResults([])
       }
     } catch (err) {
       setError("Failed to search location")
+      setSearchResults([])
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSelectSearchResult = (result: SearchResult) => {
+    fetchWeather(result.latitude, result.longitude)
   }
 
   const handleAddLocation = () => {
@@ -95,7 +121,6 @@ export default function WeatherApp() {
       lon: currentCoords.lon,
     }
 
-    // Check if location already exists
     const exists = savedLocations.some((loc) => loc.lat === newLocation.lat && loc.lon === newLocation.lon)
 
     if (!exists) {
@@ -151,7 +176,6 @@ export default function WeatherApp() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header Navigation */}
       <header className="bg-card border-b border-border">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -183,9 +207,7 @@ export default function WeatherApp() {
       {weatherData && (
         <div className="container mx-auto px-6 py-8">
           <div className="flex lg:flex-row flex-col gap-6">
-            {/* Main Content */}
             <div className="flex-1 space-y-6">
-              {/* Page Header */}
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-3xl font-bold text-foreground mb-2">Environmental Dashboard</h1>
@@ -201,7 +223,6 @@ export default function WeatherApp() {
                 </div>
               </div>
 
-              {/* Metric Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
                   icon={<Thermometer className="w-5 h-5 text-primary" />}
@@ -236,13 +257,12 @@ export default function WeatherApp() {
                 />
               </div>
 
-              {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <TrendChart
                   title="Temperature Trend"
                   icon={<Thermometer className="w-5 h-5 text-muted-foreground" />}
-                  data={weatherData.hourly.slice(0, 24).map((h, i) => ({
-                    time: new Date(h.time).getHours().toString().padStart(2, "0") + ":00",
+                  data={weatherData.hourly.slice(0, 8).map((h) => ({
+                    time: h.time,
                     value: convertTemp(h.temperature),
                   }))}
                   unit={unit === "celsius" ? "°C" : "°F"}
@@ -251,16 +271,15 @@ export default function WeatherApp() {
                 <TrendChart
                   title="Air Quality Index"
                   icon={<Wind className="w-5 h-5 text-muted-foreground" />}
-                  data={weatherData.daily.slice(0, 7).map((d, i) => ({
-                    time: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-                    value: Math.floor(50 + Math.random() * 50), // Simulated AQI data
+                  data={weatherData.daily.slice(0, 7).map((d) => ({
+                    time: d.date,
+                    value: weatherData.airQuality.aqi,
                   }))}
                   unit="AQI"
                   color="hsl(var(--chart-2))"
                 />
               </div>
 
-              {/* Additional Metrics */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">Additional Weather Details</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -297,7 +316,6 @@ export default function WeatherApp() {
                 </div>
               </Card>
 
-              {/* Pollutants Detail */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">Air Quality Pollutants</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -320,7 +338,6 @@ export default function WeatherApp() {
                 </div>
               </Card>
 
-              {/* 7-Day Forecast */}
               <Card className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
@@ -353,7 +370,6 @@ export default function WeatherApp() {
               </Card>
             </div>
 
-            {/* Sidebar */}
             <WeatherSidebar
               location={weatherData.location}
               coordinates={weatherData.coordinates}
@@ -368,6 +384,8 @@ export default function WeatherApp() {
               onAddLocation={handleAddLocation}
               onRemoveLocation={handleRemoveLocation}
               onSelectLocation={handleSelectLocation}
+              searchResults={searchResults}
+              onSelectSearchResult={handleSelectSearchResult}
             />
           </div>
         </div>

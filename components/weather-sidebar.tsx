@@ -3,12 +3,20 @@
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { MapPin, Search, Bell, Lightbulb, ChevronRight, Plus, X } from "lucide-react"
+import { MapPin, Search, Bell, ChevronRight, Plus, X } from "lucide-react"
 
 interface SavedLocation {
   name: string
   lat: number
   lon: number
+}
+
+interface SearchResult {
+  name: string
+  country: string
+  admin1?: string
+  latitude: number
+  longitude: number
 }
 
 interface WeatherSidebarProps {
@@ -25,6 +33,8 @@ interface WeatherSidebarProps {
   onAddLocation: () => void
   onRemoveLocation: (index: number) => void
   onSelectLocation: (location: SavedLocation) => void
+  searchResults: SearchResult[]
+  onSelectSearchResult: (result: SearchResult) => void
 }
 
 export function WeatherSidebar({
@@ -41,6 +51,8 @@ export function WeatherSidebar({
   onAddLocation,
   onRemoveLocation,
   onSelectLocation,
+  searchResults,
+  onSelectSearchResult,
 }: WeatherSidebarProps) {
   return (
     <div className="lg:w-80 space-y-4">
@@ -78,6 +90,33 @@ export function WeatherSidebar({
               className="pl-9 h-9 text-sm"
             />
           </div>
+          {searchResults.length > 0 && (
+            <div className="mt-2 max-h-64 overflow-y-auto border border-border rounded-lg bg-card">
+              <div className="p-2 space-y-1">
+                {searchResults.map((result, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onSelectSearchResult(result)}
+                    className="w-full text-left p-2.5 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{result.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {result.admin1 && `${result.admin1}, `}
+                          {result.country}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 mt-0.5">
+                          {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -161,21 +200,6 @@ export function WeatherSidebar({
           >
             °F
           </Button>
-        </div>
-      </Card>
-
-      {/* Environmental Tip */}
-      <Card className="p-4 bg-amber-500/5 border-amber-500/20">
-        <div className="flex gap-3">
-          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-            <Lightbulb className="w-4 h-4 text-amber-600" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">Environmental Tip</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Air quality is good today! Perfect time for outdoor activities and exercise.
-            </p>
-          </div>
         </div>
       </Card>
     </div>

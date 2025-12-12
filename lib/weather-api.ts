@@ -144,6 +144,10 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
   const forecastData = await forecastResponse.json()
   const airData = await airQualityResponse.json()
 
+  console.log("[v0] Current Weather Data:", currentData)
+  console.log("[v0] Forecast Data:", forecastData.list?.length || 0)
+  console.log("[v0] Air Quality Data:", airData)
+
   // Format sunrise/sunset times
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString("en-US", {
@@ -204,6 +208,15 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
   }
   const aqi = aqiMap[aqiValue] || 50
 
+  const weatherDetails = {
+    visibility: Math.round(currentData.visibility / 1000),
+    pressure: currentData.main.pressure,
+    uvIndex: 0,
+    windSpeed: Math.round(currentData.wind.speed * 3.6),
+    humidity: currentData.main.humidity,
+  }
+  console.log("[v0] Weather Details:", weatherDetails)
+
   return {
     location: `${currentData.name}, ${currentData.sys.country}`,
     current: {
@@ -215,7 +228,7 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
       windSpeed: Math.round(currentData.wind.speed * 3.6), // Convert m/s to km/h
       windDirection: currentData.wind.deg,
       pressure: currentData.main.pressure,
-      visibility: Math.round(currentData.visibility / 1000), // Convert to km
+      visibility: currentData.visibility, // Keep in meters for now
       uvIndex: 0, // OpenWeather free tier doesn't include UV
       sunrise: formatTime(currentData.sys.sunrise),
       sunset: formatTime(currentData.sys.sunset),
